@@ -1,1 +1,1 @@
-api_weather = "9a4df74c5c274de891a144425190304"
+api_weather = "94158aaabac2665cede91e3ef8bf0b60"
