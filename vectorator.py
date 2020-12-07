@@ -24,7 +24,7 @@ import imaplib
 
 
 
-# (I think these are called enums in Python... They relate to my dialogue.csv file)
+# I think these are called enums in Python... They relate to my dialogue.csv file
 NAME = 0
 LINES = 1
 INT_LOW = 2
@@ -33,7 +33,8 @@ MOOD = 4
 
 LAST_NAME = ""
             
-MULTS = { # These are multipliers for the chattiness setting (they raise or lower the time delays)
+# These are multipliers for the chattiness setting (they raise or lower the time delays)
+MULTS = {
   1: 7,
   2: 4,
   3: 2,
@@ -45,7 +46,6 @@ MULTS = { # These are multipliers for the chattiness setting (they raise or lowe
   9: 0.2,
   10: 0.1
 }
-
 CHATTINESS = MULTS[config.chattiness]
 
 # In the config file users can set a volume (1-5) for Vector's voice and sounds
@@ -111,7 +111,6 @@ try:
         cr = csv.reader(csvfile, delimiter=',')
         dlg = list(cr)
         print("Reading dialogue from local file...")
-
 except:
     print("Downloading dialogue from website...")
     CSV_URL = 'http://www.cuttergames.com/vector/dialogue.csv'
@@ -228,7 +227,6 @@ def say(robot, arg_name):
     
     if arg_name in dic:
         row_start = dic[arg_name]
-        #print(row_start)
         row_end = row_start + int(dlg[row_start][LINES]) # Use row_start and LINES (from dialogue file) to figure out where the dialogue starts/stops
         num_row = get_low(row_start,row_end-1)
         to_say = dlg[num_row][MOOD] # Vector's default mood is "normal", eventually he will say different dialogue based on his mood
@@ -242,7 +240,6 @@ def say(robot, arg_name):
     if arg_name == "time_intro"      : to_say = to_say + get_time() # Randomly announce the time
     if arg_name == "random_weather"  : to_say = get_weather("random_weather") # Randomly announce a weather fact
     if arg_name == "weather_forecast": to_say = get_weather("forecast")
-
     if arg_name == "email":
         mail = get_email()
         if mail == "":
@@ -269,7 +266,7 @@ def say(robot, arg_name):
             robot.anim.play_animation(random.choice(JOKE_ANIM)) # Play just one animation
 
         robot.conn.release_control()
-        robot.audio.set_master_volume(VOL[config.sound_volume]) # Change sound effects volume back to config setting
+        #robot.audio.set_master_volume(VOL[config.sound_volume]) # Change sound effects volume back to config setting
         return
     except:
         #print("Couldn't get control of robot. Trying again to say: ", to_say)
@@ -311,24 +308,23 @@ def say_sleep(robot, arg_name):
 ###############################################################################
 def goodbye(robot):
     
-    print("goodbye robot")
     #vector_react(robot, "goodbye")
     say(robot, "goodbye")
 
-    # Fernseher ausschalten
+    # tv OFF
     fernseher_aus = "http://192.168.0.7:8080/basicui/CMD?PhilipsTV803_TVPower=OFF"
 
-    # Heizkoerper herunterregeln
+    # heater ECO
     thermostat_bad_eco = "http://192.168.0.7:8080/basicui/CMD?ThermostatBadezimmer_ModusDesHeizkRperreglers=ECO"
     thermostat_wohnzimmer_eco = "http://192.168.0.7:8080/basicui/CMD?ThermostatWohnzimmer_ModusDesHeizkRperreglers=ECO"
     thermostat_schlafzimmer_eco = "http://192.168.0.7:8080/basicui/CMD?ThermostatSchlafzimmer_ModusDesHeizkRperreglers=ECO"
 
-    # Musik ausschalten
+    # music PAUSE
     sonos_bad_aus = "http://192.168.0.7:8080/basicui/CMD?SonosPlay1Bad_MediaControl=PAUSE"
     sonos_wohnzimmer_aus = "http://192.168.0.7:8080/basicui/CMD?SonosPlaybarWohnzimmer_MediaControl=PAUSE"
     sonos_schlafzimmer_aus = "http://192.168.0.7:8080/basicui/CMD?SonosPlay1Schlafzimmer_MediaControl=PAUSE"
 
-    # Licht ausschalten
+    # light OFF
     pc1_aus = "http://192.168.0.7:8080/basicui/CMD?HUEPCSpot1_Color=0,0,0"
     pc2_aus = "http://192.168.0.7:8080/basicui/CMD?HUEPCSpot2_Color=0,0,0"
     schreibtisch_aus = "http://192.168.0.7:8080/basicui/CMD?HUESchreibtischStrip_Color=0,0,0"
@@ -337,16 +333,16 @@ def goodbye(robot):
     tv3_aus = "http://192.168.0.7:8080/basicui/CMD?HUETVSpot3_Color=0,0,0"
     regal_aus = "http://192.168.0.7:8080/basicui/CMD?HUERegalStrip_Color=0,0,0"
 
-    # Fernseher, Musik und Heizung ausschalten
+    # TV, music and heater off
     for req in [fernseher_aus, 
                 thermostat_bad_eco, thermostat_wohnzimmer_eco, thermostat_schlafzimmer_eco,
                 sonos_bad_aus, sonos_wohnzimmer_aus, sonos_schlafzimmer_aus]:
         requests.post(req)
 
-    # 10 Sekunden warten
+    # wait 8 seconds to turn all off
     time.sleep(8)
 
-    # Licht ausschalten
+    # after 8 seconds turn lights off
     for req in [pc1_aus, pc2_aus,
                 schreibtisch_aus,
                 tv1_aus, tv2_aus, tv3_aus,
@@ -360,7 +356,6 @@ def average(number1, number2):
 ###############################################################################
 # An API call that allows Vector to deliver a weather forecast (it's not always accurate, in my experience)
 def get_weather(var):
-    #10/23/2019 JDR new API endpoint (and terms)
     
     rnd_weather = []
     
@@ -685,11 +680,12 @@ def run_behavior(robot):
 # MAIN
 def main():
 
-    with anki_vector.Robot("004043e9",
-                           enable_custom_object_detection=True,
+    with anki_vector.Robot(enable_custom_object_detection=True,
                            enable_face_detection=True) as robot:
-        
-        robot.conn.release_control() # I release control so Vector will do his normal behaviors
+       
+
+        # I release control so Vector will do his normal behaviors
+        robot.conn.release_control()
 
         # define custom cube
         cuscube = robot.world.define_custom_cube(custom_object_type=CustomObjectTypes.CustomType12,
@@ -700,14 +696,6 @@ def main():
                                                  is_unique=True)
 
         # define custom wall
-        cuswall1 = robot.world.define_custom_wall(custom_object_type=CustomObjectTypes.CustomType15,
-                                                  marker=CustomObjectMarkers.Circles3,
-                                                  width_mm=1000,
-                                                  height_mm=300,
-                                                  marker_width_mm=20.0,
-                                                  marker_height_mm=20.0,
-                                                  is_unique=False)
-
         cuswall2 = robot.world.define_custom_wall(custom_object_type=CustomObjectTypes.CustomType14,
                                                   marker=CustomObjectMarkers.Hexagons2,
                                                   width_mm=1000,
@@ -716,18 +704,7 @@ def main():
                                                   marker_height_mm=31.0,
                                                   is_unique=False)
 
-        #robot.camera.init_camera_feed()
-
         run_behavior(robot)
-
-        #t1 = Thread(target = run_behavior(robot))
-        #t2 = Thread(target = run_flask(robot))
-        #t1.setDaemon(True)
-        #t2.setDaemon(True)
-        #t1.start()
-        #t2.start()
-        #while True:
-        #    pass
 
 ###############################################################################
 if __name__ == "__main__":
