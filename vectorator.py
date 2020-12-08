@@ -16,7 +16,6 @@ from anki_vector import audio
 from anki_vector.connection import ControlPriorityLevel
 from anki_vector.user_intent import UserIntent, UserIntentEvent
 from anki_vector.objects import CustomObjectMarkers, CustomObjectTypes
-import apis
 import config
 import os, sys, traceback
 import email
@@ -32,7 +31,8 @@ INT_HIGH = 3
 MOOD = 4
 
 LAST_NAME = ""
-            
+LATEST_MAIL = ""
+
 # These are multipliers for the chattiness setting (they raise or lower the time delays)
 MULTS = {
   1: 7,
@@ -224,7 +224,8 @@ def vector_react(robot, arg):
 ###############################################################################
 # This makes Vector talk by looking up dialogue in the dlg file 
 def say(robot, arg_name):
-    
+    global LATEST_MAIL
+
     if arg_name in dic:
         row_start = dic[arg_name]
         row_end = row_start + int(dlg[row_start][LINES]) # Use row_start and LINES (from dialogue file) to figure out where the dialogue starts/stops
@@ -240,15 +241,12 @@ def say(robot, arg_name):
     if arg_name == "time_intro"      : to_say = to_say + get_time() # Randomly announce the time
     if arg_name == "random_weather"  : to_say = get_weather("random_weather") # Randomly announce a weather fact
     if arg_name == "weather_forecast": to_say = get_weather("forecast")
-    if arg_name == "email":
-        mail = get_email()
-        if mail == "":
-            return
-        else:
-            to_say = to_say + mail
+    if arg_name == "email"           : to_say = to_say + LATEST_MAIL
     
 
     to_say = randomizer(to_say) # This replaces certain words with synonyms
+
+    print(to_say)
 
     # Get all giggle animations for jokes
     if not JOKE_ANIM:
@@ -362,9 +360,9 @@ def get_weather(var):
     try:
         #location can be city, state; city, country; zip code.
         if var == "forecast":
-            url = f"http://api.openweathermap.org/data/2.5/forecast?APPID={apis.api_weather}&q={config.weather_location}&units={config.temperature}"
+            url = f"http://api.openweathermap.org/data/2.5/forecast?APPID={config.api_weather}&q={config.weather_location}&units={config.temperature}"
         else:
-            url = f"http://api.openweathermap.org/data/2.5/weather?APPID={apis.api_weather}&q={config.weather_location}&units={config.temperature}"
+            url = f"http://api.openweathermap.org/data/2.5/weather?APPID={config.api_weather}&q={config.weather_location}&units={config.temperature}"
         req = urllib.request.Request(
             url,
             data=None,
@@ -490,6 +488,7 @@ def get_time():
 ###############################################################################
 # Check for new E-Mails
 def get_email():
+    global LATEST_MAIL   
     
     mail_imap = config.mail_imap
     mail_account = config.mail_account
@@ -511,19 +510,17 @@ def get_email():
         email_message = email.message_from_string(raw_email_string)
 
     # Header Details
-    details = ""
+    LATEST_MAIL = ""
     if email_message is not "":
         date_tuple = email.utils.parsedate_tz(email_message['Date'])
         if date_tuple:
             email_from = str(email.header.make_header(email.header.decode_header(email_message['From'])))
-            email_from = email_from.split("<")[0].strip()
+            email_from = str(email_from.split("<")[0].strip())
             #subject = str(email.header.make_header(email.header.decode_header(email_message['Subject'])))
             #details = [email_from, subject]
-            details = email_from
+            LATEST_MAIL = email_from
 
-    #print("details>>>"+details+"<<<")
-
-    return str(details)
+    return LATEST_MAIL
 
 ###############################################################################
 def wake_up(robot):
@@ -672,9 +669,10 @@ def run_behavior(robot):
                 vector_react(robot, "tired")
                 time.sleep(90)
 
-        vector_react(robot, "email")
+        if get_email() is not "":
+            vector_react(robot, "email")
 
-        time.sleep(0.1) # Sleep then loop back (Do I need this? Should it be longer?)
+        #time.sleep(0.1) # Sleep then loop back (Do I need this? Should it be longer?)
 
 ###############################################################################
 # MAIN
