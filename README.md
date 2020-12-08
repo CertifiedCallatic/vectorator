@@ -19,7 +19,7 @@ I wanted to add more actions/reactions to Vector, but without Anki's tools this 
 I went through and documented a lot of my code this morning, but I'll provide some additional instructions below:
 
 ### Editing Vector's "dialogue"
-When the program runs it downloads a file called dialogue.csv from my website. If you copy this file to the same folder as the program, Vectorator will use it instead of the downloaded version. The file is here: http://cuttergames.com/vector/dialogue.csv
+The dialogue.csv file must be in the same directory as the program
 
 The first column (NAME), contains event/trigger names. Don't change these.
 
