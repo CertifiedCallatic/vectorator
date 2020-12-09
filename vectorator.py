@@ -31,7 +31,7 @@ INT_HIGH = 3
 MOOD = 4
 
 LAST_NAME = ""
-LATEST_MAIL = ""
+LAST_MAIL = ""
 
 # These are multipliers for the chattiness setting (they raise or lower the time delays)
 MULTS = {
@@ -67,7 +67,7 @@ ts = {}
 version = 0.75
 
 # For the randomizer function (if a dialogue contains "{good}"", for example, then I randomly replace it with a word below)
-good = ["good", "great", "cool", "wonderful", "lovely", "charming", "nice", "enjoyable", "incredible", "remarkable", "fabulous", "pleasant", "fantastic"]
+good = ["good", "great", "cool", "wonderful", "lovely", "charming", "nice", "enjoyable", "incredible", "remarkable", "fabulous", "pleasant", "fantastic", "magnificent"]
 weird = ["weird", "odd", "strange", "very weird", "crazy", "bizarre", "remarkable", "outlandish", "different", "random", "curious", "freaky"]
 scary = ["scary", "frightening", "terrifying", "alarming", "daunting", "frightful", "grim", "harrowing", "shocking"]
 interesting = ["interesting", "weird", "strange", "curious", "fascinating", "intriguing", "provocative", "thought-provoking", "unusual", "captivating", "amazing"]
@@ -113,7 +113,7 @@ try:
         print("Reading dialogue from local file...")
 except:
     print("Downloading dialogue from website...")
-    CSV_URL = 'http://www.cuttergames.com/vector/dialogue.csv'
+    CSV_URL = 'https://github.com/Hamlet3000/vectorator/blob/master/dialogue.csv'
     with requests.Session() as s:
         download = s.get(CSV_URL)
         decoded_content = download.content.decode('utf-8')
@@ -183,12 +183,9 @@ def vector_react(robot, arg):
     
     #print("Vector is trying to react to: ", arg)
 
-
-    if (datetime.now() - ts["wake_word"]).total_seconds() < 15: # If Vector was listening, don't react for a little while
-        #print("Wake word timeout")
+    if (datetime.now() - ts["wake_word"]).total_seconds() < 30: # If Vector was listening, don't react for a little while
         return
     if robot.status.is_pathing == True: # If Vector is doing something, don't speak
-        #print("Vector is pathing...")
         return
     if arg == "pass": # This adds a bit of controllable randomness to some of the random dialogues (jokes, telling the time, etc.)
         #print("Instead of attempting a random comment, I chose to pass this time...")
@@ -214,9 +211,8 @@ def vector_react(robot, arg):
             save_timestamps() 
             say(robot, arg) 
     else:
-        if arg != "news_intro": 
-            #print("Vector isn't yet ready to talk about " + arg)
-            return
+        #print("Vector isn't yet ready to talk about " + arg)
+        return
 
     return
 
@@ -224,7 +220,7 @@ def vector_react(robot, arg):
 ###############################################################################
 # This makes Vector talk by looking up dialogue in the dlg file 
 def say(robot, arg_name):
-    global LATEST_MAIL
+    global LAST_MAIL
 
     if arg_name in dic:
         row_start = dic[arg_name]
@@ -241,12 +237,12 @@ def say(robot, arg_name):
     if arg_name == "time_intro"      : to_say = to_say + get_time() # Randomly announce the time
     if arg_name == "random_weather"  : to_say = get_weather("random_weather") # Randomly announce a weather fact
     if arg_name == "weather_forecast": to_say = get_weather("forecast")
-    if arg_name == "email"           : to_say = to_say + LATEST_MAIL
+    if arg_name == "email"           : to_say = to_say + LAST_MAIL
     
 
     to_say = randomizer(to_say) # This replaces certain words with synonyms
 
-    print(to_say)
+    #print(to_say)
 
     # Get all giggle animations for jokes
     if not JOKE_ANIM:
@@ -264,7 +260,6 @@ def say(robot, arg_name):
             robot.anim.play_animation(random.choice(JOKE_ANIM)) # Play just one animation
 
         robot.conn.release_control()
-        #robot.audio.set_master_volume(VOL[config.sound_volume]) # Change sound effects volume back to config setting
         return
     except:
         #print("Couldn't get control of robot. Trying again to say: ", to_say)
@@ -488,7 +483,7 @@ def get_time():
 ###############################################################################
 # Check for new E-Mails
 def get_email():
-    global LATEST_MAIL   
+    global LAST_MAIL   
     
     mail_imap = config.mail_imap
     mail_account = config.mail_account
@@ -510,22 +505,41 @@ def get_email():
         email_message = email.message_from_string(raw_email_string)
 
     # Header Details
-    LATEST_MAIL = ""
+    LAST_MAIL = ""
     if email_message is not "":
         date_tuple = email.utils.parsedate_tz(email_message['Date'])
         if date_tuple:
             email_from = str(email.header.make_header(email.header.decode_header(email_message['From'])))
             email_from = str(email_from.split("<")[0].strip())
             #subject = str(email.header.make_header(email.header.decode_header(email_message['Subject'])))
-            #details = [email_from, subject]
-            LATEST_MAIL = email_from
+            LAST_MAIL = email_from
 
-    return LATEST_MAIL
+    return LAST_MAIL
+
+###############################################################################
+# if Vector recognizes a familiar face he will remember 60 seconds
+def get_last_name(robot):
+    global LAST_NAME
+
+    seenFaces = robot.world.visible_faces
+
+    if (datetime.now() - ts["last_saw_face"]).total_seconds() > 60:
+       LAST_NAME = ""
+    
+    for face in seenFaces:
+        ts["last_saw_face"] = datetime.now() # Update timestamp - Vector saw a face
+        if len(face.name) > 0: # Did Vector recognize the face?
+            ts["last_saw_name"] = datetime.now() # Update timestamp - Vector recognized a face
+            LAST_NAME = face.name # Save name of person Vector recognized
+
+    return LAST_NAME
 
 ###############################################################################
 def wake_up(robot):
     vector_react(robot, "wake_up")
-    if "last_saw_face" in ts and (datetime.now() - ts["last_saw_face"]).total_seconds() < 60: # Saw a specific face within last 60 seconds
+
+    # If Vector saw a face within 60 seconds and he es fully charged, drive ofo charger
+    if "last_saw_face" in ts and (datetime.now() - ts["last_saw_face"]).total_seconds() < 60:
         try:
             robot.conn.request_control()
             robot.behavior.drive_off_charger() # Drive off the Charger
@@ -534,6 +548,13 @@ def wake_up(robot):
         except:
             #print("Couldn't get control of robot. Trying again to say: ", to_say)
             time.sleep(1)
+
+###############################################################################
+def check_random_object(robot):
+
+    # TODO
+    # I have to somehow differentiate between known/custom objects and unknown objects within the sensor range
+    return 0
 
 ###############################################################################
 def on_wake_word(robot, event_type, event):
@@ -550,11 +571,7 @@ def on_wake_word(robot, event_type, event):
                           "simple_vioce_response"]
 
         if j['type'] in valid_response:
-            #print("valid response")
-            #took out the time, you can already ask for that.
-            #taking out last_saw_name until I check to see if he has seen a face he knows.
             reaction = random.choices(["joke_intro", "fact_intro", "random_weather"])
-            #print(reaction)
             say(robot, reaction[0])
 
         if j['type'] == "greeting_goodbye":
@@ -570,107 +587,113 @@ def on_cube_detected(robot, event_type, event):
 # This will be called whenever an EvtObjectAppeared is dispatched - whenever an Object comes into view.
 def handle_object_appeared(robot, event_type, event):
 
-    # When Vector sees a face
-    if type(event.obj) is Face:
-        vector_react(robot, "user")
+    objString = str(type(event.obj))
+
+    # When Vector sees a face do a random reaction
+    if "Face" in objString:
+        reaction = random.choices(["pass", "last_saw_name", "time_intro", "news_intro", "joke_intro", "fact_intro", "random_weather"], [50, 20, 5, 10, 10, 20, 10], k = 1)
+        vector_react(robot, reaction[0])
         return
 
-    try:
-        object_type = event.obj.archetype.custom_type
-    except:
-        object_type = None
+    # When Vector sees his LightCube
+    if "LightCube" in objString:
+        if robot.proximity.last_sensor_reading.distance.distance_mm in range(40,100):
+            vector_react(robot, "cube_detected")
+            return
 
-    # Reaction to defined custom objects
-    if object_type != None:
-        if object_type.name is "CustomType12":
-            vector_react(robot, "custom_object_detected")
+    # When Vector sees his LightCube
+    if "Charger" in objString:
+        vector_react(robot, "charger_detected")
+        return
+
+    # When Vector sees a custom object
+    if "CustomObject" in objString:
+        object_type = event.obj.archetype.custom_type
+        if robot.proximity.last_sensor_reading.distance.distance_mm in range(40,100):
+            if object_type.name is "CustomType12":
+                vector_react(robot, "custom_object_detected")
+                return
+
         if object_type.name is "CustomType14":
             print("is this a Wall?")
+            return
+
         if object_type.name is "CustomType15":
             print("Custom Type 15")
-
-###############################################################################
-# This will be called whenever an EvtObjectDisappeared is dispatched - whenever an Object goes out of view.
-def handle_object_disappeared(robot, event_type, event):
-    #print(f"--------- Vector stopped seeing an object --------- \n{event.obj}")
-    pass
-
+            return
 
 ###############################################################################
 # runs behavior
 def run_behavior(robot):
-    global LAST_NAME
 
     robot.audio.set_master_volume(VOL[config.sound_volume])
 
     vector_react(robot, "greeting")
 
     robot.events.subscribe(on_wake_word, Events.wake_word)
-    robot.events.subscribe(on_cube_detected, Events.robot_observed_object)
     robot.events.subscribe(handle_object_appeared, anki_vector.events.Events.object_appeared)
-    robot.events.subscribe(handle_object_disappeared, anki_vector.events.Events.object_disappeared)
+    #robot.events.subscribe(on_cube_detected, Events.robot_observed_object)
 
-    ltime = time.time() + 5 # Delay when telling random joke, fact, etc.
-    ftime = time.time() + 1 # Check for faces every second or two
     carry_flag = False
 
     while True:
+        # Get the name, I Vector sees a face
+        get_last_name(robot)
+
+        # if Vector is picked up
         if robot.status.is_being_held:
             vector_react(robot, "picked_up")
 
+        # if Vector is on his charger
         if robot.status.is_on_charger:
             vector_react(robot, "charging")
 
+        # if Vector is in calm power mode
         if robot.status.is_in_calm_power_mode:
             vector_react(robot, "sleeping")
 
+        # if Vector detects a cliff
         if robot.status.is_cliff_detected:
             vector_react(robot, "cliff")
 
+        # if Vectors button is pressed
         if robot.status.is_button_pressed:
             vector_react(robot, "button_pressed")
 
+        # if Vector drops his cube after picking it up
         if robot.status.is_carrying_block == True:
             if carry_flag == False:
                 carry_flag = True
-        else: # Vector is NOT holding his cube - Not sure this code is working. (Vector sometimes drops his block, but he he thinks he's still holding it)
+        else:
             if carry_flag == True:
                 vector_react(robot, "dropped_cube")
                 carry_flag = False
 
-        # if vector recently saw a face
-        if (datetime.now() - ts["last_saw_face"]).total_seconds() < 60:
-            vector_react(robot, "news_intro")
-
+        # if Vector is petted
         touch_data = robot.touch.last_sensor_reading
         if touch_data is not None:
             if touch_data.is_being_touched:
                 vector_react(robot, "touched")
 
-        if time.time() > ftime: # Is timer up?
-            seenFaces = robot.world.visible_faces
-            for face in seenFaces:
-                ts["last_saw_face"] = datetime.now() # Update timestamp - Vector saw a face
-                if len(face.name) > 0: # Did Vector recognize the face?
-                    ts["last_saw_name"] = datetime.now() # Update timestamp - Vector recognized a face
-                    LAST_NAME = face.name # Save name of person Vector recognized
-                if time.time() > ltime: # Vector saw a face, and the timer for random comments is up (they are weighted, with "pass" for 'do nothing')
-                    reaction = random.choices(["pass", "joke_intro", "fact_intro", "time_intro", "random_weather", "last_saw_name"], [50, 10, 10, 20, 5, 10], k = 1)
-                    vector_react(robot, reaction[0])
-                    ltime = time.time() + 3
-            ftime = time.time() + 1 # Reset timer
-
+        # if Vector is fully charged
         battery_state = robot.get_battery_state()
         if battery_state.battery_level == 3:
             wake_up(robot)
 
+        # if Vectors battery is going low
         if not robot.status.is_on_charger:
             if battery_state.battery_volts <= 3.63:  # <3.61 was too low
                 vector_react(robot, "tired")
                 time.sleep(90)
 
+        # if an e-mail comes in
         if get_email() is not "":
             vector_react(robot, "email")
+   
+        # if vector detects a unknown Object
+        if check_random_object(robot):
+            vector_react(robot, "object_detected")
+
 
         #time.sleep(0.1) # Sleep then loop back (Do I need this? Should it be longer?)
 
@@ -681,7 +704,6 @@ def main():
     with anki_vector.Robot(enable_custom_object_detection=True,
                            enable_face_detection=True) as robot:
        
-
         # I release control so Vector will do his normal behaviors
         robot.conn.release_control()
 
@@ -693,13 +715,21 @@ def main():
                                                  marker_height_mm=20.0,
                                                  is_unique=True)
 
-        # define custom wall
-        cuswall2 = robot.world.define_custom_wall(custom_object_type=CustomObjectTypes.CustomType14,
+        # define custom walls
+        cuswall1 = robot.world.define_custom_wall(custom_object_type=CustomObjectTypes.CustomType14,
                                                   marker=CustomObjectMarkers.Hexagons2,
                                                   width_mm=1000,
                                                   height_mm=300,
                                                   marker_width_mm=31.0,
                                                   marker_height_mm=31.0,
+                                                  is_unique=False)
+
+        cuswall2 = robot.world.define_custom_wall(custom_object_type=CustomObjectTypes.CustomType15,
+                                                  marker=CustomObjectMarkers.Circles3,
+                                                  width_mm=1000,
+                                                  height_mm=300,
+                                                  marker_width_mm=20.0,
+                                                  marker_height_mm=20.0,
                                                   is_unique=False)
 
         run_behavior(robot)
