@@ -1,13 +1,11 @@
 # vectorator
 
 ### Important Installation Instructions ###
-1. Update (May 22, 2019): I believe my issue with Bluehost has been resolved. So the program should work again WITHOUT having local copies of the .csv and .txt files. 
-
-2. In order for Vector to read the news you will need to install feedparser. This command should do the trick:
+1. In order for Vector to read the news you will need to install feedparser. This command should do the trick:
 
       'pip install feedparser' (though some installed it using: 'py -3 -m pip install feedparser')
 
-3. You MUST be using the latest version of the SDK. There are installation notes here:
+2. You MUST be using the latest version of the SDK. There are installation notes here:
 
      https://forums.anki.com/t/vector-sdk-v0-6-0-alpha-release-notes-april-30-2019/33455
 
