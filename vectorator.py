@@ -506,7 +506,7 @@ def get_email():
 
     # Header Details
     LAST_MAIL = ""
-    if email_message is not "":
+    if email_message != "":
         date_tuple = email.utils.parsedate_tz(email_message['Date'])
         if date_tuple:
             email_from = str(email.header.make_header(email.header.decode_header(email_message['From'])))
@@ -610,15 +610,15 @@ def handle_object_appeared(robot, event_type, event):
     if "CustomObject" in objString:
         object_type = event.obj.archetype.custom_type
         if robot.proximity.last_sensor_reading.distance.distance_mm in range(40,100):
-            if object_type.name is "CustomType12":
+            if object_type.name == "CustomType12":
                 vector_react(robot, "custom_object_detected")
                 return
 
-        if object_type.name is "CustomType14":
+        if object_type.name == "CustomType14":
             print("is this a Wall?")
             return
 
-        if object_type.name is "CustomType15":
+        if object_type.name == "CustomType15":
             print("Custom Type 15")
             return
 
@@ -687,7 +687,7 @@ def run_behavior(robot):
                 time.sleep(90)
 
         # if an e-mail comes in
-        if get_email() is not "":
+        if get_email() != "":
             vector_react(robot, "email")
    
         # if vector detects a unknown Object
