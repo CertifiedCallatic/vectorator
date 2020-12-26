@@ -3,7 +3,7 @@
 ### Important Installation Instructions ###
 1. In order for Vector to read the news you will need to install feedparser. This command should do the trick:
 
-      'pip install feedparser' (though some installed it using: 'py -3 -m pip install feedparser')
+      'pip3 install feedparser' (though some installed it using: 'py -3 -m pip install feedparser')
 
 2. You MUST be using the latest version of the SDK. There are installation notes here:
 
