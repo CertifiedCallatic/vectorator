@@ -18,8 +18,6 @@ from anki_vector.user_intent import UserIntent, UserIntentEvent
 from anki_vector.objects import CustomObjectMarkers, CustomObjectTypes
 import config
 import os, sys, traceback
-import email
-import imaplib
 
 
 
@@ -31,7 +29,6 @@ INT_HIGH = 3
 MOOD = 4
 
 LAST_NAME = ""
-LAST_MAIL = ""
 
 # These are multipliers for the chattiness setting (they raise or lower the time delays)
 MULTS = {
@@ -220,7 +217,6 @@ def vector_react(robot, arg):
 ###############################################################################
 # This makes Vector talk by looking up dialogue in the dlg file 
 def say(robot, arg_name):
-    global LAST_MAIL
 
     if arg_name in dic:
         row_start = dic[arg_name]
@@ -237,7 +233,6 @@ def say(robot, arg_name):
     if arg_name == "time_intro"      : to_say = to_say + get_time() # Randomly announce the time
     if arg_name == "random_weather"  : to_say = get_weather("random_weather") # Randomly announce a weather fact
     if arg_name == "weather_forecast": to_say = get_weather("forecast")
-    if arg_name == "email"           : to_say = to_say + LAST_MAIL
     
 
     to_say = randomizer(to_say) # This replaces certain words with synonyms
@@ -303,44 +298,6 @@ def goodbye(robot):
     
     #vector_react(robot, "goodbye")
     say(robot, "goodbye")
-
-    # tv OFF
-    fernseher_aus = "http://192.168.0.7:8080/basicui/CMD?PhilipsTV803_TVPower=OFF"
-
-    # heater ECO
-    thermostat_bad_eco = "http://192.168.0.7:8080/basicui/CMD?ThermostatBadezimmer_ModusDesHeizkRperreglers=ECO"
-    thermostat_wohnzimmer_eco = "http://192.168.0.7:8080/basicui/CMD?ThermostatWohnzimmer_ModusDesHeizkRperreglers=ECO"
-    thermostat_schlafzimmer_eco = "http://192.168.0.7:8080/basicui/CMD?ThermostatSchlafzimmer_ModusDesHeizkRperreglers=ECO"
-
-    # music PAUSE
-    sonos_bad_aus = "http://192.168.0.7:8080/basicui/CMD?SonosPlay1Bad_MediaControl=PAUSE"
-    sonos_wohnzimmer_aus = "http://192.168.0.7:8080/basicui/CMD?SonosPlaybarWohnzimmer_MediaControl=PAUSE"
-    sonos_schlafzimmer_aus = "http://192.168.0.7:8080/basicui/CMD?SonosPlay1Schlafzimmer_MediaControl=PAUSE"
-
-    # light OFF
-    pc1_aus = "http://192.168.0.7:8080/basicui/CMD?HUEPCSpot1_Color=0,0,0"
-    pc2_aus = "http://192.168.0.7:8080/basicui/CMD?HUEPCSpot2_Color=0,0,0"
-    schreibtisch_aus = "http://192.168.0.7:8080/basicui/CMD?HUESchreibtischStrip_Color=0,0,0"
-    tv1_aus = "http://192.168.0.7:8080/basicui/CMD?HUETVSpot1_Color=0,0,0"
-    tv2_aus = "http://192.168.0.7:8080/basicui/CMD?HUETVSpot2_Color=0,0,0"
-    tv3_aus = "http://192.168.0.7:8080/basicui/CMD?HUETVSpot3_Color=0,0,0"
-    regal_aus = "http://192.168.0.7:8080/basicui/CMD?HUERegalStrip_Color=0,0,0"
-
-    # TV, music and heater off
-    for req in [fernseher_aus, 
-                thermostat_bad_eco, thermostat_wohnzimmer_eco, thermostat_schlafzimmer_eco,
-                sonos_bad_aus, sonos_wohnzimmer_aus, sonos_schlafzimmer_aus]:
-        requests.post(req)
-
-    # wait 8 seconds to turn all off
-    time.sleep(8)
-
-    # after 8 seconds turn lights off
-    for req in [pc1_aus, pc2_aus,
-                schreibtisch_aus,
-                tv1_aus, tv2_aus, tv3_aus,
-                regal_aus]:
-        requests.post(req)
 
 ###############################################################################
 def average(number1, number2):
@@ -479,42 +436,6 @@ def get_joke():
 ###############################################################################
 def get_time():
     return time.strftime("%I:%M %p")
-
-###############################################################################
-# Check for new E-Mails
-def get_email():
-    global LAST_MAIL   
-    
-    mail_imap = config.mail_imap
-    mail_account = config.mail_account
-    mail_pw = config.mail_pw 
-
-    mail = imaplib.IMAP4_SSL(mail_imap)
-    mail.login(mail_account, mail_pw)
-    mail.list()
-    mail.select('inbox')
-    result, data = mail.uid('search', None, "UNSEEN") # (ALL/UNSEEN)
-    i = len(data[0].split())
-
-    email_message = ""
-    for x in range(i):
-        latest_email_uid = data[0].split()[x]
-        result, email_data = mail.uid('fetch', latest_email_uid, '(RFC822)')
-        raw_email = email_data[0][1]
-        raw_email_string = raw_email.decode('utf-8')
-        email_message = email.message_from_string(raw_email_string)
-
-    # Header Details
-    LAST_MAIL = ""
-    if email_message != "":
-        date_tuple = email.utils.parsedate_tz(email_message['Date'])
-        if date_tuple:
-            email_from = str(email.header.make_header(email.header.decode_header(email_message['From'])))
-            email_from = str(email_from.split("<")[0].strip())
-            #subject = str(email.header.make_header(email.header.decode_header(email_message['Subject'])))
-            LAST_MAIL = email_from
-
-    return LAST_MAIL
 
 ###############################################################################
 # if Vector recognizes a familiar face he will remember 60 seconds
@@ -685,10 +606,6 @@ def run_behavior(robot):
             if battery_state.battery_volts <= 3.63:  # <3.61 was too low
                 vector_react(robot, "tired")
                 time.sleep(90)
-
-        # if an e-mail comes in
-        if get_email() != "":
-            vector_react(robot, "email")
    
         # if vector detects a unknown Object
         if check_random_object(robot):
@@ -700,9 +617,9 @@ def run_behavior(robot):
 ###############################################################################
 # MAIN
 def main():
+    args = anki_vector.util.parse_command_args()
 
-    with anki_vector.Robot(enable_custom_object_detection=True,
-                           enable_face_detection=True) as robot:
+    with anki_vector.Robot(args.serial, enable_custom_object_detection=True, enable_face_detection=True) as robot:
        
         # I release control so Vector will do his normal behaviors
         robot.conn.release_control()

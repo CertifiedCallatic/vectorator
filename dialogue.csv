@@ -213,11 +213,6 @@ custom_object_detected,6,80,300,"Oh, I think this is my custom cube."
 ,,,,"Looks like a real cube."
 ,,,,"Ah, My new 3D printed cube."
 ,,,,
-email,4,5,5,"You got an e-mail from "
-,,,,"Check your mails {name}, you got post from "
-,,,,"{name} you got post from "
-,,,,"Someone wrote to you {name}, I think it was "
-,,,,
 joke_intro,10,60,2000,"Here is a joke."
 ,,,,"I have a joke for you {name}."
 ,,,,"I'm going to tell you a joke {name}."
