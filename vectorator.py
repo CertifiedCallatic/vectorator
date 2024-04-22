@@ -76,11 +76,19 @@ weird = ["weird", "odd", "strange", "very weird", "crazy", "bizarre", "remarkabl
 scary = ["scary", "frightening", "very scary", "terrifying", "alarming", "daunting", "frightful", "grim", "harrowing", "shocking"]
 interesting = ["interesting", "weird", "strange", "curious", "fascinating", "intriguing", "provocative", "thought-provoking", "unusual", "captivating", "amazing"]
 
+# get the path of the local files
+pyPath = os.path.realpath(__file__)
+pyPath1 = os.path.dirname(pyPath)
+jokesPath = os.path.join(pyPath1, "jokes.txt")
+factsPath = os.path.join(pyPath1, "facts.txt")
+dialoguePath = os.path.join(pyPath1, "dialogue.csv")
+
 # Load the jokes into a list called 'jokes'. Try local, then download. Need to figure out a better way to do do this... 
 try:
-    with open("jokes.txt", 'r') as f:
+    with open(jokesPath, 'r') as f:
         jokes = [line.rstrip('\n') for line in f]
 except:
+    print("Downloading jokes from Website...")
     jokes = []
     content=urllib.request.urlopen("http://www.cuttergames.com/vector/jokes.txt") 
     
@@ -90,9 +98,10 @@ except:
 
 # Load the facts into a list called 'facts'. Try local, then download. Need to figure out a better way to do do this... 
 try:
-    with open("facts.txt", 'r') as f:
+    with open(factsPath, 'r') as f:
         facts = [line.rstrip('\n') for line in f]
 except:
+    print("Downloading facts from Website...")
     facts = []
     content=urllib.request.urlopen("http://www.cuttergames.com/vector/facts.txt") 
     
@@ -102,14 +111,13 @@ except:
 
 # Try to load local dialogue file. On exception, load file from website. Need to figure out a better way to do do this... 
 try:
-    with open('dialogue.csv') as csvfile:
+    with open(dialoguePath) as csvfile:
         cr = csv.reader(csvfile, delimiter=',')
         dlg = list(cr)
         print("Reading dialogue from local file...")
-
 except:
     print("Downloading dialogue from website...")
-    CSV_URL = 'http://www.cuttergames.com/vector/dialogue.csv'
+    CSV_URL = 'https://github.com/CertifiedCallatic/vectorator/blob/master/dialogue.csv'
     with requests.Session() as s:
         download = s.get(CSV_URL)
         decoded_content = download.content.decode('utf-8')
@@ -141,6 +149,7 @@ for index, row in enumerate(dlg):
 
 # START OF FUNCTIONS ###################################################################################
 
+###############################################################################
 # Whenever Vector speaks I save the timestamps in ts (when the event/trigger happened, and when it can happen next)
 def save_timestamps():
     with open('timestamps.csv', 'w', newline = '') as csv_file:
@@ -161,7 +170,7 @@ def get_low(low,high):
 def randomizer(say):
     global LAST_NAME
     if "{name}" in say: 
-        if "last_saw_name" in ts and (datetime.now() - ts["last_saw_name"]).total_seconds() < 5: # Saw a specific face within last 5 seconds
+        if "last_saw_name" in ts and (datetime.now() - ts["last_saw_name"]).total_seconds() < 60: # Saw a specific face within last 5 seconds
             say = say.replace("{name}", LAST_NAME)
         else:
             say = say.replace("{name}", "") # If we didn't see a specific face, then remove "{name}"
@@ -267,14 +276,18 @@ def say_sleep(arg_name):
     to_say = dlg[num_row][MOOD]
     robot.conn.request_control()
     robot.anim.play_animation("anim_gotosleep_sleeploop_01") # Playing a sleep animation so Vector appears to sleep/snore while he's talking
-    time.sleep(15)
+    time.sleep(-1)
     to_say = sleep_mumble + to_say
-    robot.audio.set_master_volume(VOL[config.voice_volume])
+    robot.audio.set_master_volume(VOL[1])
     robot.behavior.say_text(to_say, duration_scalar=2.0)
     robot.anim.play_animation("anim_gotosleep_sleeploop_01")
-    say("wake_up") # Vector always wakes up after he talks, so I have him say something about waking up
+    #say("wake_up") # Vector always wakes up after he talks, so I have him say something about waking up
     robot.audio.set_master_volume(VOL[config.sound_volume])
     robot.conn.release_control()
+
+###############################################################################
+def average(number1, number2):
+    return (number1 + number2) / 2
 
 ###############################################################################
 # An API call that allows Vector to deliver a weather forecast (it's not always accurate, in my experience)
@@ -323,22 +336,22 @@ def get_weather(var):
 
         if config.temperature == "imperial":
             #forecast_temp_avg = output["forecast"]["forecastday"][0]["day"]["avgtemp_f"]
-            #forecast_wind = output["forecast"]["forecastday"][0]["day"]["maxwind_mph"]
-            wind_speed = " miles per hour"
+            #forecast_wind = output["forecast"]["forecastday"][0]["day"]["maxwind_kph"]
+            wind_speed = " kilometers per hour"
         else:
             #forecast_temp_avg = output["forecast"]["forecastday"][0]["day"]["avgtemp_c"]
             #forecast_temp_high = output["forecast"]["forecastday"][0]["day"]["maxtemp_c"]
             #forecast_temp_low = output["forecast"]["forecastday"][0]["day"]["mintemp_c"]
-            #forecast_wind = output["forecast"]["forecastday"][0]["day"]["maxwind_kph"]
-            wind_speed = " kilometers per hour"
+            #forecast_wind = output["forecast"]["forecastday"][0]["day"]["maxwind_mph"]
+            wind_speed = " miles per hour"
 
         # In the morning, Vector tells the news and weather when he sees a face
         if var == "forecast":
             weather = []
-            weather.append(f". And now for some weather. Today, it will be {forecast_condition}, with a temperature of {forecast_temp_high} degrees, and wind speeds around {forecast_wind}{wind_speed}.")
-            weather.append(f". Later today, it will be {forecast_condition}, with a high of {forecast_temp_high} degrees and a low of {forecast_temp_low} degrees.")
-            weather.append(f". Here's your local weather. The high today will be {forecast_temp_high} degrees, and look for a low of around {forecast_temp_low}. Winds will be {forecast_wind}{wind_speed}.")
-            weather.append(f". Later today it will be {forecast_condition}, with an average temperature of {forecast_temp_avg} degrees, and wind speeds around {forecast_wind}{wind_speed}.")
+            weather.append(f". And now for some weather. Today in {config.loc_city} {config.loc_region}, it will be {forecast_condition}, with a temperature of {forecast_temp_high} degrees, and wind speeds around {forecast_wind}{wind_speed}. Right now, it is {current_temp} degrees.")
+            weather.append(f". Right now in {config.loc_city} {config.loc_region}, it is {current_temp} degrees and {current_condition}. Later today, it will be {forecast_condition}, with a high of {forecast_temp_high} degrees and a low of {forecast_temp_low} degrees.")
+            weather.append(f". Here's your local weather. The temperature in {config.loc_city} {config.loc_region} right now, is {current_temp} degrees. The high today will be {forecast_temp_high} degrees, and look for a low of around {forecast_temp_low}. Winds will be {forecast_wind}{wind_speed}.")
+            weather.append(f". Moving to the weather. It is currently {current_condition} in {config.loc_city} {config.loc_region}. Later today it will be {forecast_condition}, with an average temperature of {forecast_temp_avg} degrees, and wind speeds around {forecast_wind}{wind_speed}.")
             return(random.choice(weather))
 
         # At random times, Vector will see a face and announce something about the weather
@@ -346,17 +359,17 @@ def get_weather(var):
             rnd_weather = []
             #if {current_temp} != {current_temp_feelslike}:
             #   rnd_weather.append(f"The current temperature is {current_temp} degrees, but it feels like {current_temp_feelslike} degrees.")
-            rnd_weather.append(f"Right now, the temperature is {current_temp} degrees.")
+            rnd_weather.append(f"Right now in {config.loc_city}, the temperature is {current_temp} degrees.")
 
             if current_wind < 15:
-                rnd_weather.append(f"Right now, it is a relatively calm {current_temp} degrees, with winds at {current_wind}{wind_speed}.")
+                rnd_weather.append(f"Right now in {config.loc_city}, it is a relatively calm {current_temp} degrees, with winds at {current_wind}{wind_speed}.")
             else:
-                rnd_weather.append(f"Right now, it is a blustery {current_temp} degrees, with winds at {current_wind}{wind_speed}.")
-                rnd_weather.append(f"At this moment, the weather is {current_condition}.")
-                rnd_weather.append(f"Hello. It is currently {current_temp} degrees. The humidity is {current_humidity} percent.")
+                rnd_weather.append(f"Right now in {config.loc_city}, it is a blustery {current_temp} degrees, with winds at {current_wind}{wind_speed}.")
+                rnd_weather.append(f"At this moment in {config.loc_city}, the weather is {current_condition}.")
+                rnd_weather.append(f"Hello {name}. It is currently {current_temp} degrees. The humidity is {current_humidity} percent.")
 
     except Exception as inst:
-        #print(traceback.format_exc())
+        print(traceback.format_exc())
         rnd_weather.append("I'm more of an indoor robot.")
         rnd_weather.append("I have no idea what it is like out there.")
         rnd_weather.append("I'm a robot, not a weather forecaster.")
@@ -420,6 +433,20 @@ def get_pickupline():
     my_rand = random.randint(0, lines.__len__() - 1)
     return lines[my_rand]
 
+###############################################################################
+def wake_up(robot):
+    vector_react("wake_up")
+
+    # If Vector saw a face within 60 seconds and he is fully charged, drive of charger
+    if "last_saw_face" in ts and (datetime.now() - ts["last_saw_face"]).total_seconds() < 60:
+        try:
+            robot.conn.request_control()
+            robot.behavior.drive_off_charger() # Drive off the Charger
+            robot.conn.release_control()
+            return
+        except:
+            #print("Couldn't get control of robot. Trying again to say: ", to_say)
+            time.sleep(1)
 
 def on_wake_word(robot, event_type, event):
     vector_react("wake_word")
@@ -490,6 +517,11 @@ with anki_vector.Robot(args.serial, enable_face_detection=True
         if robot.status.is_in_calm_power_mode:
             vector_react("sleeping")
 
+        # if Vector is fully charged
+        battery_state = robot.get_battery_state()
+        if battery_state.battery_level == 3:
+            wake_up(robot)
+
         if robot.status.is_cliff_detected:
             vector_react("cliff")
 
@@ -553,12 +585,9 @@ with anki_vector.Robot(args.serial, enable_face_detection=True
                     robot.behavior.say_text("I need to find my charger soon.")
                     time.sleep(30)
 
-                #if battery_state.battery_level < 2:
-                    #robot.behavior.say_text("My battery level is low.")
-
-            #if not anyrecognized and my_var.__sizeof__() > 0:
-             #   if ts["last_saw_stranger"] + datetime.timedelta(0, 600) < datetime.now():
-              #      ts["last_saw_stranger"] = datetime.now()
-               #     vector_react("stranger")
+            if not anyrecognized and my_var.__sizeof__() > 0:
+                if ts["last_saw_stranger"] + datetime.timedelta(0, 600) < datetime.now():
+                    ts["last_saw_stranger"] = datetime.now()
+                    vector_react("stranger")
 
         time.sleep(0.1) # Sleep then loop back (Do I need this? Should it be longer?)
