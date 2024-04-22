@@ -276,12 +276,12 @@ def say_sleep(arg_name):
     to_say = dlg[num_row][MOOD]
     robot.conn.request_control()
     robot.anim.play_animation("anim_gotosleep_sleeploop_01") # Playing a sleep animation so Vector appears to sleep/snore while he's talking
-    time.sleep(-1)
+    time.sleep(15)
     to_say = sleep_mumble + to_say
     robot.audio.set_master_volume(VOL[1])
     robot.behavior.say_text(to_say, duration_scalar=2.0)
     robot.anim.play_animation("anim_gotosleep_sleeploop_01")
-    #say("wake_up") # Vector always wakes up after he talks, so I have him say something about waking up
+    say("wake_up") # Vector always wakes up after he talks, so I have him say something about waking up
     robot.audio.set_master_volume(VOL[config.sound_volume])
     robot.conn.release_control()
 
@@ -579,15 +579,15 @@ with anki_vector.Robot(args.serial, enable_face_detection=True
                     ltime = time.time() + 3
             ftime = time.time() + 1 # Reset timer
 
-            if not robot.status.is_on_charger:
-                battery_state = robot.get_battery_state()
-                if battery_state.battery_volts < 3.6:
-                    robot.behavior.say_text("I need to find my charger soon.")
-                    time.sleep(30)
+            #if not robot.status.is_on_charger:
+                #battery_state = robot.get_battery_state()
+                #if battery_state.battery_volts < 3.6:
+                    #robot.behavior.say_text("I need to find my charger soon.")
+                    #time.sleep(30)
 
-            if not anyrecognized and my_var.__sizeof__() > 0:
-                if ts["last_saw_stranger"] + datetime.timedelta(0, 600) < datetime.now():
-                    ts["last_saw_stranger"] = datetime.now()
-                    vector_react("stranger")
+            #if not anyrecognized and my_var.__sizeof__() > 0:
+                #if ts["last_saw_stranger"] + datetime.timedelta(0, 600) < datetime.now():
+                    #ts["last_saw_stranger"] = datetime.now()
+                    #vector_react("stranger")
 
         time.sleep(0.1) # Sleep then loop back (Do I need this? Should it be longer?)
