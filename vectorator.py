@@ -1,5 +1,7 @@
+import io
 import time
 from datetime import datetime, timedelta
+from threading import Thread
 import random
 import anki_vector
 import urllib
@@ -13,8 +15,9 @@ from anki_vector.util import degrees, distance_mm, speed_mmps
 from anki_vector import audio
 from anki_vector.connection import ControlPriorityLevel
 from anki_vector.user_intent import UserIntent, UserIntentEvent
-import apis
+from anki_vector.objects import CustomObjectMarkers, CustomObjectTypes
 import config
+import os, sys, traceback
 
 # (I think these are called enums in Python... They relate to my dialogue.csv file)
 NAME = 0
@@ -213,7 +216,8 @@ def say(arg_name):
     if arg_name == "joke_intro": to_say = to_say + get_joke() # if joke then add to end of intro
     if arg_name == "fact_intro": to_say = to_say + get_fact() # if fact then add to end of intro
     if arg_name == "time_intro": to_say = to_say + get_time() # Randomly announce the time
-    if arg_name == "random_weather": to_say = get_weather("random_weather") # Randomly announce a weather fact
+    if arg_name == "random_weather"  : to_say = get_weather("random_weather") # Randomly announce a weather fact
+    if arg_name == "weather_forecast": to_say = get_weather("forecast")
     if arg_name == "stranger": to_say = to_say + get_pickupline()
 
     to_say = randomizer(to_say) # This replaces certain words with synonyms
@@ -272,13 +276,18 @@ def say_sleep(arg_name):
     robot.audio.set_master_volume(VOL[config.sound_volume])
     robot.conn.release_control()
 
+###############################################################################
 # An API call that allows Vector to deliver a weather forecast (it's not always accurate, in my experience)
 def get_weather(var):
-    #10/23/2019 JDR new API endpoint (and terms)
+    
+    rnd_weather = []
+    
     try:
         #location can be city, state; city, country; zip code.
-        url = f"http://api.weatherstack.com/current?access_key={apis.api_weather}&query={config.weather_location}&units={config.temperature[0]}"
-        print(url)
+        if var == "forecast":
+            url = f"http://api.openweathermap.org/data/2.5/forecast?APPID={config.api_weather}&q={config.weather_location}&units={config.temperature}"
+        else:
+            url = f"http://api.openweathermap.org/data/2.5/weather?APPID={config.api_weather}&q={config.weather_location}&units={config.temperature}"
         req = urllib.request.Request(
             url,
             data=None,
@@ -286,25 +295,34 @@ def get_weather(var):
             )
         data = urllib.request.urlopen(req).read()
         output = json.loads(data)
-        #10/23/2019 JDR free api, no forecast (weather.gov for US?)
-        #forecast_condition = output["forecast"]["forecastday"][0]["day"]["condition"]["text"]
-        #10/23/2019 JDR new API object
-        current_condition = output["current"]["weather_descriptions"]
-        #forecast_avghumidity = output["forecast"]["forecastday"][0]["day"]["avghumidity"]
-        current_humidity = output["current"]["humidity"]
 
-        weather_name = output["location"]["name"]
-        weather_region = output["location"]["region"]
+        if var == "forecast":
+            section =output["list"][0]
+            forecast_condition = section["weather"][0]["description"]
+            forecast_humidity = section["main"]["humidity"]
+            forecast_temp = output["list"][0]["main"]["temp"]
+            forecast_temp_high = int(round(section["main"]["temp_min"]))
+            forecast_temp_low = int(round(section["main"]["temp_max"]))
+            forecast_temp_avg = int(round(average(forecast_temp_high, forecast_temp_low)))
+            forecast_wind = int(round(section["wind"]["speed"]))
+        else:
+            #10/23/2019 JDR free api, no forecast (weather.gov for US?)
+            #forecast_condition = output["forecast"]["forecastday"][0]["day"]["condition"]["text"]
+            #10/23/2019 JDR new API object
+            current_condition = output["weather"][0]["description"]
+            #forecast_avghumidity = output["forecast"]["forecastday"][0]["day"]["avghumidity"]
+            current_humidity = output["main"]["humidity"]
 
-        #New API, specify the units in the request
-        current_temp_feelslike = output["current"]["feelslike"]
-        current_temp = output["current"]["temperature"]
-        current_wind = output["current"]["wind_speed"]
+            #weather_name = output["location"]["name"]
+            #weather_region = output["location"]["region"]
 
-        if config.temperature == "farenheit":
+            #New API, specify the units in the request
+            #current_temp_feelslike = output["current"]["feelslike"]
+            current_temp = int(round(average(output["main"]["temp_min"], output["main"]["temp_max"])))
+            current_wind = output["wind"]["speed"]
+
+        if config.temperature == "imperial":
             #forecast_temp_avg = output["forecast"]["forecastday"][0]["day"]["avgtemp_f"]
-            #forecast_temp_high = output["forecast"]["forecastday"][0]["day"]["maxtemp_f"]
-            #forecast_temp_low = output["forecast"]["forecastday"][0]["day"]["mintemp_f"]
             #forecast_wind = output["forecast"]["forecastday"][0]["day"]["maxwind_mph"]
             wind_speed = " miles per hour"
         else:
@@ -315,29 +333,30 @@ def get_weather(var):
             wind_speed = " kilometers per hour"
 
         # In the morning, Vector tells the news and weather when he sees a face
-    #    if var == "forecast":
-    #        weather = []
-    #        weather.append(f". And now for some weather. Today in {config.loc_city} {config.loc_region}, it will be {forecast_condition}, with a temperature of {forecast_temp_high} degrees, and wind speeds around {forecast_wind}{wind_speed}. Right now, it is {current_temp} degrees.")
-    #        weather.append(f". Right now in {config.loc_city} {config.loc_region}, it is {current_temp} degrees and {current_condition}. Later today, it will be {forecast_condition}, with a high of {forecast_temp_high} degrees and a low of {forecast_temp_low} degrees.")
-    #        weather.append(f". Here's your local weather. The temperature in {config.loc_city} {config.loc_region} right now, is {current_temp} degrees. The high today will be {forecast_temp_high} degrees, and look for a low of around {forecast_temp_low}. Winds will be {forecast_wind}{wind_speed}.")
-    #        weather.append(f". Moving to the weather. It is currently {current_condition} in {config.loc_city} {config.loc_region}. Later today it will be {forecast_condition}, with an average temperature of {forecast_temp_avg} degrees, and wind speeds around {forecast_wind}{wind_speed}.")
-    #        return(random.choice(weather))
+        if var == "forecast":
+            weather = []
+            weather.append(f". And now for some weather. Today, it will be {forecast_condition}, with a temperature of {forecast_temp_high} degrees, and wind speeds around {forecast_wind}{wind_speed}.")
+            weather.append(f". Later today, it will be {forecast_condition}, with a high of {forecast_temp_high} degrees and a low of {forecast_temp_low} degrees.")
+            weather.append(f". Here's your local weather. The high today will be {forecast_temp_high} degrees, and look for a low of around {forecast_temp_low}. Winds will be {forecast_wind}{wind_speed}.")
+            weather.append(f". Later today it will be {forecast_condition}, with an average temperature of {forecast_temp_avg} degrees, and wind speeds around {forecast_wind}{wind_speed}.")
+            return(random.choice(weather))
 
         # At random times, Vector will see a face and announce something about the weather
-     #   if var == "random_weather":
-        rnd_weather = []
-        if {current_temp} != {current_temp_feelslike}:
-            rnd_weather.append(f"The current temperature is {current_temp} degrees, but it feels like {current_temp_feelslike} degrees.")
-        rnd_weather.append(f"Right now, the temperature is {current_temp} degrees.")
-        if current_wind < 15:
-            rnd_weather.append(f"Right now, it is a relatively calm {current_temp} degrees, with winds at {current_wind}{wind_speed}.")
-        else:
-            rnd_weather.append(f"Right now, it is a blustery {current_temp} degrees, with winds at {current_wind}{wind_speed}.")
-            rnd_weather.append(f"At this moment, the weather is {current_condition}.")
-            rnd_weather.append(f"Hello. It is currently {current_temp} degrees. The humidity is {current_humidity} percent.")
+        if var == "random_weather":
+            rnd_weather = []
+            #if {current_temp} != {current_temp_feelslike}:
+            #   rnd_weather.append(f"The current temperature is {current_temp} degrees, but it feels like {current_temp_feelslike} degrees.")
+            rnd_weather.append(f"Right now, the temperature is {current_temp} degrees.")
 
-    except:
-        print("Unexpected weather error:", sys.exc_info()[0])
+            if current_wind < 15:
+                rnd_weather.append(f"Right now, it is a relatively calm {current_temp} degrees, with winds at {current_wind}{wind_speed}.")
+            else:
+                rnd_weather.append(f"Right now, it is a blustery {current_temp} degrees, with winds at {current_wind}{wind_speed}.")
+                rnd_weather.append(f"At this moment, the weather is {current_condition}.")
+                rnd_weather.append(f"Hello. It is currently {current_temp} degrees. The humidity is {current_humidity} percent.")
+
+    except Exception as inst:
+        #print(traceback.format_exc())
         rnd_weather.append("I'm more of an indoor robot.")
         rnd_weather.append("I have no idea what it is like out there.")
         rnd_weather.append("I'm a robot, not a weather forecaster.")
@@ -345,6 +364,7 @@ def get_weather(var):
 
     return(random.choice(rnd_weather))
 
+###############################################################################
 # I was using an API, but the free account only gave me a few hundred accesses per week. Then I found an RSS feed that works great!
 # Users can specify how many news stories to hear. If more than one I randomly choose a bridge to say between them (like "In other news...")
 def get_news():
@@ -352,14 +372,17 @@ def get_news():
     bridge = [". And in other news. ", ". In OTHER news... ", ". Taking a look at other news. ", ". Here is another news item. ", ". Here is an interesting story. "]
     news = ""
     news_count = config.news_count
-    feed = feedparser.parse("https://www.cbsnews.com/latest/rss/world")
+    feed = feedparser.parse(config.news_feed)
+    
+    listeTitle = []
     for post in feed.entries:
-        news = news + post.description
-        say_count += 1
-        if say_count == news_count:
-            return news
-        else:
-            news = news + random.choice(bridge)
+        listeTitle.append(post.title)
+       
+    while say_count < news_count:
+        news = news + listeTitle[say_count] + random.choice(bridge)
+        say_count = say_count+1
+        news = news + listeTitle[say_count+1]
+    return news
 
 def get_fact():
     num = len(facts)
@@ -389,8 +412,8 @@ def get_pickupline():
              "Have we met before?",
              "Hey you!",
              "Wilson!",
-             "May I introduce myself, I am Vector",
-             "Say Vector, I am, then your name so I can recognize you in the future",
+             "May I introduce myself, I am Wall-E",
+             "Say Wall-E, I am, then your name so I can recognize you in the future",
              "Are you my mother?",
              "What are you doing in my house?"
              }
@@ -437,7 +460,9 @@ def on_cube_detected(robot, event_type, event):
             vector_react("cube_detected")
 
 # MAIN ******************************************************************************************************************************
-with anki_vector.Robot(enable_face_detection=True
+args = anki_vector.util.parse_command_args()
+
+with anki_vector.Robot(args.serial, enable_face_detection=True
 
                        ) as robot:
     robot.conn.release_control() # I release control so Vector will do his normal behaviors
