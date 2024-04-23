@@ -1,9 +1,9 @@
-api_weather = "a2cc0a0e24d9a454bc51209c8af93cf9"				  # Enter api Key form openweathermap.org
-weather_location = "Bradford"			# Seems pretty flexible: city, state; major city name; zip code; city, country
+api_weather = ""				  # Enter api Key form openweathermap.org
+weather_location = ""			# Seems pretty flexible: city, state; major city name; zip code; city, country
 news_count = 2                        # How many news stories Vector should read (max is 7 to 9)
 vector_mood = "normal"                # Normal is the only mood at the moment
 temperature = "metric"             # Enter "imperial" or "metric"
 chattiness = 6                        # Enter a number between "1" and "10". The number "5" is average. ("10" is VERY chatty.) This feature still needs work.
 sound_volume = 3                      # Vector's sound effects between "1" and "5". (5 is very loud)
 voice_volume = 4                      # Vector's voice volume between "1" and "5". (5 is very loud)
-news_feed = "https://www.thetelegraphandargus.co.uk/news/rss/" 					  # You can use any rss feed for this
+news_feed = "" 					  # You can use any rss feed for this

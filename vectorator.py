@@ -289,6 +289,10 @@ def say_sleep(arg_name):
     robot.conn.release_control()
 
 ###############################################################################
+def average(number1, number2):
+    return (number1 + number2) / 2
+
+###############################################################################
 # An API call that allows Vector to deliver a weather forecast (it's not always accurate, in my experience)
 def get_weather(var):
     
@@ -436,7 +440,7 @@ def get_last_name(robot):
     return LAST_NAME
 
 def wake_up(robot):
-    vector_react(robot, "wake_up")
+    vector_react("wake_up")
 
     # If Vector saw a face within 60 seconds and he is fully charged, drive of the charger
     if "last_saw_face" in ts and (datetime.now() - ts["last_saw_face"]).total_seconds() < 60:
